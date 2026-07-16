@@ -1,7 +1,7 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    Configure, build, and test Aequitas on Windows.
+    Configure, build, test, and package Aequitas on Windows into releases/vX.Y.Z/windows/.
 
 .PARAMETER Debug
     Build Debug instead of Release.
@@ -9,16 +9,37 @@
 .PARAMETER Run
     Launch aequitas.exe after a successful build.
 
+.PARAMETER Package
+    Force packaging into releases/ (even for Debug).
+
+.PARAMETER NoPackage
+    Skip packaging even for Release.
+
 .EXAMPLE
     .\scripts\build-windows.ps1
-    .\scripts\build-windows.ps1 --debug
     .\scripts\build-windows.ps1 --run
+    .\scripts\build-windows.ps1 --debug
+    .\scripts\build-windows.ps1 --no-package
 #>
-[CmdletBinding()]
 param(
-    [switch]$Debug,
-    [switch]$Run
+    [switch]$BuildDebug,
+    [switch]$Run,
+    [switch]$Package,
+    [switch]$NoPackage,
+    [Parameter(ValueFromRemainingArguments = $true)]
+    [string[]]$Remaining = @()
 )
+
+foreach ($arg in $Remaining) {
+    switch ($arg) {
+        '--debug'      { $BuildDebug = $true }
+        '-Debug'       { $BuildDebug = $true }
+        '--run'        { $Run = $true }
+        '--package'    { $Package = $true }
+        '--no-package' { $NoPackage = $true }
+        default        { Write-Error "Unknown argument: $arg" }
+    }
+}
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -28,6 +49,14 @@ Set-Location $RepoRoot
 
 function Write-Step([string]$Message) {
     Write-Host "`n==> $Message" -ForegroundColor Cyan
+}
+
+function Read-ProjectVersion {
+    $v = (Get-Content -Path (Join-Path $RepoRoot 'VERSION') -Raw).Trim()
+    if ($v -notmatch '^\d+\.\d+\.\d+$') {
+        Write-Error "VERSION file must contain SemVer MAJOR.MINOR.PATCH (got '$v')"
+    }
+    return $v
 }
 
 function Find-CMake {
@@ -85,8 +114,10 @@ function Test-Ninja {
 Write-Step 'Checking prerequisites'
 Find-CMake
 Resolve-VulkanSdk | Out-Null
+$ProjectVersion = Read-ProjectVersion
+Write-Host "Project VERSION = $ProjectVersion"
 
-$BuildType = if ($Debug) { 'debug' } else { 'release' }
+$BuildType = if ($BuildDebug) { 'debug' } else { 'release' }
 $Preset    = $BuildType
 $BuildPreset = $BuildType
 $TestPreset  = $BuildType
@@ -94,12 +125,12 @@ $TestPreset  = $BuildType
 if (-not (Test-Ninja)) {
     Write-Host 'Ninja not found — falling back to Visual Studio preset.' -ForegroundColor Yellow
     $Preset = 'windows-vs'
-    if ($Debug) {
+    if ($BuildDebug) {
         $BuildPreset = 'windows-vs-debug'
     } else {
         $BuildPreset = 'windows-vs-release'
     }
-    $TestPreset = if ($Debug) { 'debug' } else { 'release' }
+    $TestPreset = if ($BuildDebug) { 'debug' } else { 'release' }
 }
 
 $BuildDir = Join-Path $RepoRoot "build\$BuildType"
@@ -121,11 +152,21 @@ $Headless = Join-Path $BinDir 'aequitas_headless.exe'
 $Visual   = Join-Path $BinDir 'aequitas.exe'
 
 Write-Step 'Build complete'
+Write-Host "  version           : $ProjectVersion"
 Write-Host "  aequitas_headless : $Headless"
 if (Test-Path $Visual) {
     Write-Host "  aequitas          : $Visual"
 } else {
     Write-Host "  aequitas          : (not built — AEQUITAS_BUILD_RENDERER=OFF?)" -ForegroundColor Yellow
+}
+
+$ShouldPackage = (-not $NoPackage) -and ((-not $BuildDebug) -or $Package)
+if ($ShouldPackage) {
+    Write-Step "Packaging releases/v$ProjectVersion/windows"
+    & (Join-Path $RepoRoot 'scripts\package-release.ps1') -BinDir $BinDir -Version $ProjectVersion
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+} else {
+    Write-Host "`n(Skipping releases/ package — use Release build or pass --package)" -ForegroundColor DarkGray
 }
 
 if ($Run) {

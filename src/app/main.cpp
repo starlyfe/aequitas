@@ -10,6 +10,8 @@
 
 #include "ui/hud.h"
 
+#include "aequitas_version.h"
+
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
@@ -56,7 +58,7 @@ glm::vec3 sun_direction(float tick_fraction) {
 } // namespace
 
 int main() {
-    std::printf("Aequitas %s — Vulkan render layer\n", "0.1.0");
+    std::printf("Aequitas %s — Vulkan render layer\n", AEQUITAS_VERSION_STRING);
 
     glfwSetErrorCallback(glfw_error_callback);
     if (glfwInit() == GLFW_FALSE) {

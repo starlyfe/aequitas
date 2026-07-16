@@ -106,3 +106,14 @@ Build system: CMake ≥ 3.28, presets in `CMakePresets.json` (`debug`, `release`
 - Participant mode, Q-learning, multi-hub caravans, firms — deferred behind documented seams
 
 **v0.1.0 foundation complete.** Fork → `scripts/build-*.ps1|.sh` → watch the aquarium.
+
+---
+
+## Versioned releases — 2026-07-15
+
+**Packaging + agent release protocol (v0.2.0).**
+
+- Single-source `VERSION` file → CMake `PROJECT_VERSION` + generated `aequitas_version.h`
+- Release builds package into `releases/vX.Y.Z/<platform>/` and `aequitas-vX.Y.Z-<platform>.zip`
+- `AGENTS.md` mandates SemVer bump + `CHANGELOG.md` on shippable work; `CLAUDE.md` imports it for Claude Code (`@AGENTS.md`)
+- Binary payloads under `releases/v*/` remain gitignored; history is `VERSION` + changelog + git tags / GitHub Releases

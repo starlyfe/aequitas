@@ -1,5 +1,7 @@
 #include "sim/simulation.h"
 
+#include "aequitas_version.h"
+
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
@@ -34,7 +36,7 @@ Args parse(int argc, char** argv) {
 
 int main(int argc, char** argv) {
     const Args args = parse(argc, argv);
-    std::cout << "Aequitas headless " << "0.1.0"
+    std::cout << "Aequitas headless " << AEQUITAS_VERSION_STRING
               << " — ticks=" << args.ticks << " seed=" << args.seed << '\n';
 
     aeq::SimConfig cfg;

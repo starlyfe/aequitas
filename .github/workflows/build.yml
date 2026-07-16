@@ -19,19 +19,27 @@ jobs:
           - os: windows-latest
             script: scripts/build-windows.ps1
             shell: pwsh
-            artifact_name: aequitas-windows
+            platform: windows
           - os: ubuntu-latest
             script: scripts/build-linux.sh
             shell: bash
-            artifact_name: aequitas-linux
+            platform: linux
           - os: macos-latest
             script: scripts/build-macos.sh
             shell: bash
-            artifact_name: aequitas-macos
+            platform: macos
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Read VERSION
+        id: ver
+        shell: bash
+        run: |
+          V="$(tr -d '[:space:]' < VERSION)"
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "Aequitas VERSION=$V"
 
       - name: Install Vulkan SDK
         uses: humbletim/setup-vulkan-sdk@v1.2.1
@@ -45,7 +53,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            build-essential ninja-build \
+            build-essential ninja-build zip \
             libx11-dev libxrandr-dev libxi-dev libxxf86vm-dev \
             libxinerama-dev libxcursor-dev xorg-dev \
             libwayland-dev libxkbcommon-dev wayland-protocols
@@ -54,30 +62,17 @@ jobs:
         if: runner.os == 'macOS'
         run: brew install ninja
 
-      - name: Build and test (Release)
+      - name: Build, test, and package (Release)
         shell: ${{ matrix.shell }}
         run: ${{ matrix.script }}
 
-      - name: Package binaries (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force -Path dist | Out-Null
-          Compress-Archive -Path build/release/bin/* -DestinationPath dist/${{ matrix.artifact_name }}.zip -Force
-
-      - name: Package binaries (Unix)
-        if: runner.os != 'Windows'
-        shell: bash
-        run: |
-          mkdir -p dist
-          cd build/release/bin
-          zip -r "../../../dist/${{ matrix.artifact_name }}.zip" .
-
-      - name: Upload build artifact
+      - name: Upload versioned release zip
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact_name }}
-          path: dist/${{ matrix.artifact_name }}.zip
+          name: aequitas-v${{ steps.ver.outputs.version }}-${{ matrix.platform }}
+          path: |
+            releases/v${{ steps.ver.outputs.version }}/aequitas-v${{ steps.ver.outputs.version }}-${{ matrix.platform }}.zip
+            releases/v${{ steps.ver.outputs.version }}/aequitas-v${{ steps.ver.outputs.version }}-${{ matrix.platform }}.tar.gz
           if-no-files-found: error
 
   release:
@@ -98,5 +93,6 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/*.zip
+          files: artifacts/*
           generate_release_notes: true
+          body_path: CHANGELOG.md

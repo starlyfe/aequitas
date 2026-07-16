@@ -49,14 +49,16 @@ Clone, then run the build script for your platform.
 ```powershell
 git clone https://github.com/<org>/Aequitas.git
 cd Aequitas
-.\scripts\build-windows.ps1          # Release build + tests
-.\scripts\build-windows.ps1 --debug  # Debug build
-.\scripts\build-windows.ps1 --run    # Build Release and launch aequitas
+.\scripts\build-windows.ps1          # Release build + tests + package → releases/vX.Y.Z/windows/
+.\scripts\build-windows.ps1 --debug  # Debug build (no package)
+.\scripts\build-windows.ps1 --run    # Build Release, package, launch aequitas
 ```
 
 Requires `VULKAN_SDK` (the script also probes `C:\VulkanSDK\*`).
 
-Artifacts: `build\release\bin\aequitas.exe`, `aequitas_headless.exe`
+Build tree: `build\release\bin\`  
+Versioned release: `releases\v<VERSION>\windows\` + `aequitas-v<VERSION>-windows.zip`  
+(Version comes from the root [`VERSION`](VERSION) file — see [`AGENTS.md`](AGENTS.md).)
 
 ### macOS
 

@@ -35,5 +35,9 @@ __pycache__/
 # Compiled shaders (generated next to binary)
 *.spv
 
+# Versioned release binaries (local time capsule — do not commit payloads)
+releases/v*/
+!releases/README.md
+
 # Packages
 vcpkg_installed/

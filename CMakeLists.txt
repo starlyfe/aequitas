@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.28)
-project(aequitas VERSION 0.1.0 LANGUAGES CXX)
+
+# Version must be known before project() so PROJECT_VERSION matches VERSION file.
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/version.cmake)
+project(aequitas VERSION ${AEQUITAS_VERSION} LANGUAGES CXX)
+aequitas_write_version_header()
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -53,7 +57,10 @@ add_library(aequitas_sim STATIC
     src/sim/telemetry.cpp
     src/sim/simulation.cpp
 )
-target_include_directories(aequitas_sim PUBLIC ${CMAKE_SOURCE_DIR}/src)
+target_include_directories(aequitas_sim PUBLIC
+    ${CMAKE_SOURCE_DIR}/src
+    ${AEQUITAS_VERSION_HEADER_DIR}
+)
 aequitas_set_warnings(aequitas_sim)
 
 # ---------------------------------------------------------------------------

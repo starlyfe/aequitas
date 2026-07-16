@@ -17,15 +17,15 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            script: scripts/build-windows.ps1
+            script: tools/build-windows.ps1
             shell: pwsh
             platform: windows
           - os: ubuntu-latest
-            script: scripts/build-linux.sh
+            script: tools/build-linux.sh
             shell: bash
             platform: linux
           - os: macos-latest
-            script: scripts/build-macos.sh
+            script: tools/build-macos.sh
             shell: bash
             platform: macos
 

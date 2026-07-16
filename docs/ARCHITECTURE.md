@@ -164,7 +164,7 @@ Unit tests live in `tests/` and link only `aequitas_sim`:
 - `test_determinism` — same seed → identical trade log
 - `test_parity` — headless tick results match embedded golden vectors
 
-Run via `ctest` after build, or `scripts/build-*.ps1|.sh` with no extra flags.
+Run via `ctest` after build, or `tools/build-*.ps1|.sh` with no extra flags.
 
 ## Build Targets (CMake)
 

@@ -27,7 +27,7 @@ releases/
 ## How it works
 
 1. Agents (and humans) bump the single-line [`VERSION`](../VERSION) file and edit [`CHANGELOG.md`](../CHANGELOG.md) when shipping a feature — see [`AGENTS.md`](../AGENTS.md).
-2. `scripts/build-windows.ps1` / `build-macos.sh` / `build-linux.sh` read `VERSION`, build Release, then copy binaries into `releases/v$VERSION/<platform>/` and write a zip beside it.
+2. `tools/build-windows.ps1` / `build-macos.sh` / `build-linux.sh` read `VERSION`, build Release, then copy binaries into `releases/v$VERSION/<platform>/` and write a zip beside it.
 3. Debug builds (`--debug`) do **not** package into `releases/` (use `--package` to force).
 
 ## Git policy

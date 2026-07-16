@@ -22,6 +22,16 @@ bool g_scroll_hooked = false;
 
 void scroll_callback(GLFWwindow*, double /*xoffset*/, double yoffset) { g_scroll_delta += yoffset; }
 
+// Horizontal look direction (from eye toward target, on the ground plane).
+glm::vec3 ground_forward(float yaw) {
+    return glm::normalize(glm::vec3(-std::sin(yaw), 0.f, -std::cos(yaw)));
+}
+
+glm::vec3 ground_right(float yaw) {
+    const glm::vec3 fwd = ground_forward(yaw);
+    return glm::normalize(glm::cross(fwd, glm::vec3(0.f, 1.f, 0.f)));
+}
+
 } // namespace
 
 glm::vec3 Camera::eye_position() const {
@@ -45,6 +55,9 @@ void Camera::process_input(GLFWwindow* window, float dt, bool ui_wants_mouse, bo
         glfwSetScrollCallback(window, scroll_callback);
         g_scroll_hooked = true;
     }
+    if (pan_cursor_ == nullptr) {
+        pan_cursor_ = glfwCreateStandardCursor(GLFW_HAND_CURSOR);
+    }
 
     double mx = 0.0;
     double my = 0.0;
@@ -62,38 +75,46 @@ void Camera::process_input(GLFWwindow* window, float dt, bool ui_wants_mouse, bo
     const double scroll = g_scroll_delta;
     g_scroll_delta = 0.0;
 
+    bool panning = false;
     if (!ui_wants_mouse) {
+        // RMB = pan (grab map), MMB = orbit.
         const bool rmb = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT) == GLFW_PRESS;
         const bool mmb = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_MIDDLE) == GLFW_PRESS;
 
-        if (rmb && dragging_rmb_) {
-            yaw += static_cast<float>(dx) * 0.006f;
-            pitch += static_cast<float>(dy) * 0.006f;
+        if (mmb && dragging_orbit_) {
+            // Natural orbit: drag right → yaw the other way (world turns under the grab).
+            yaw -= static_cast<float>(dx) * 0.006f;
+            pitch -= static_cast<float>(dy) * 0.006f;
             pitch = std::clamp(pitch, kMinPitch, kMaxPitch);
         }
-        dragging_rmb_ = rmb;
+        dragging_orbit_ = mmb;
 
-        if (mmb && dragging_mmb_) {
-            const glm::vec3 fwd = glm::normalize(glm::vec3(std::sin(yaw), 0.f, std::cos(yaw)));
-            const glm::vec3 right = glm::normalize(glm::cross(fwd, glm::vec3(0.f, 1.f, 0.f)));
+        if (rmb && dragging_pan_) {
+            const glm::vec3 fwd = ground_forward(yaw);
+            const glm::vec3 right = ground_right(yaw);
             const float pan_speed = distance * 0.0016f;
+            // Grab-the-map: content follows the hand (screen-right = +right, screen-down = -fwd).
+            // Camera target moves opposite so the grabbed point stays under the cursor.
             target -= right * static_cast<float>(dx) * pan_speed;
             target += fwd * static_cast<float>(dy) * pan_speed;
+            panning = true;
         }
-        dragging_mmb_ = mmb;
+        dragging_pan_ = rmb;
 
         if (scroll != 0.0) {
             distance -= static_cast<float>(scroll) * distance * 0.12f;
             distance = std::clamp(distance, kMinDistance, kMaxDistance);
         }
     } else {
-        dragging_rmb_ = false;
-        dragging_mmb_ = false;
+        dragging_orbit_ = false;
+        dragging_pan_ = false;
     }
 
+    glfwSetCursor(window, panning ? pan_cursor_ : nullptr);
+
     if (!ui_wants_keyboard) {
-        const glm::vec3 fwd = glm::normalize(glm::vec3(std::sin(yaw), 0.f, std::cos(yaw)));
-        const glm::vec3 right = glm::normalize(glm::cross(fwd, glm::vec3(0.f, 1.f, 0.f)));
+        const glm::vec3 fwd = ground_forward(yaw);
+        const glm::vec3 right = ground_right(yaw);
         const float speed = std::max(distance, 4.f) * 0.7f * dt;
         if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
             target += fwd * speed;
@@ -110,20 +131,30 @@ void Camera::process_input(GLFWwindow* window, float dt, bool ui_wants_mouse, bo
     }
 }
 
-std::optional<Hex> Camera::pick(GLFWwindow* window) const {
-    int w = 0;
-    int h = 0;
-    glfwGetWindowSize(window, &w, &h);
-    if (w <= 0 || h <= 0) {
+std::optional<Hex> Camera::pick(GLFWwindow* window, const World* world) const {
+    int fb_w = 0;
+    int fb_h = 0;
+    glfwGetFramebufferSize(window, &fb_w, &fb_h);
+    int win_w = 0;
+    int win_h = 0;
+    glfwGetWindowSize(window, &win_w, &win_h);
+    if (fb_w <= 0 || fb_h <= 0 || win_w <= 0 || win_h <= 0) {
         return std::nullopt;
     }
+
     double mx = 0.0;
     double my = 0.0;
     glfwGetCursorPos(window, &mx, &my);
+    // glfw cursor is in window coords; convert to framebuffer pixels (DPI / Retina).
+    const double scale_x = static_cast<double>(fb_w) / static_cast<double>(win_w);
+    const double scale_y = static_cast<double>(fb_h) / static_cast<double>(win_h);
+    mx *= scale_x;
+    my *= scale_y;
 
-    const float ndc_x = static_cast<float>(2.0 * mx / w - 1.0);
-    const float ndc_y = static_cast<float>(1.0 - 2.0 * my / h);
-    const float aspect = static_cast<float>(w) / static_cast<float>(h);
+    // With proj[1][1] flipped for Vulkan, unproject using Vulkan NDC (+Y down).
+    const float ndc_x = static_cast<float>(2.0 * mx / static_cast<double>(fb_w) - 1.0);
+    const float ndc_y = static_cast<float>(2.0 * my / static_cast<double>(fb_h) - 1.0);
+    const float aspect = static_cast<float>(fb_w) / static_cast<float>(fb_h);
 
     const glm::mat4 inv_vp = glm::inverse(view_proj(aspect));
     glm::vec4 near_pt = inv_vp * glm::vec4(ndc_x, ndc_y, 0.f, 1.f);
@@ -139,12 +170,39 @@ std::optional<Hex> Camera::pick(GLFWwindow* window) const {
     if (std::fabs(dir.y) < 1e-6f) {
         return std::nullopt;
     }
-    const float t = -origin.y / dir.y;
-    if (t < 0.f) {
+
+    auto hit_y_plane = [&](float plane_y) -> std::optional<glm::vec3> {
+        const float t = (plane_y - origin.y) / dir.y;
+        if (t < 0.f) {
+            return std::nullopt;
+        }
+        return origin + dir * t;
+    };
+
+    // Seed with the ground plane, then refine against each tile's prism top so the pick
+    // matches what the eye sees (y=0 alone drifts toward the camera on raised biomes).
+    std::optional<glm::vec3> hit = hit_y_plane(0.f);
+    if (!hit.has_value()) {
         return std::nullopt;
     }
-    const glm::vec3 hit = origin + dir * t;
-    return world_to_hex(Vec2{hit.x, hit.z});
+
+    Hex hex = world_to_hex(Vec2{hit->x, hit->z});
+    if (world != nullptr) {
+        for (int iter = 0; iter < 4; ++iter) {
+            const Tile* tile = world->try_get(hex);
+            const float height = tile != nullptr ? tile_surface_height(tile->biome) : 0.f;
+            hit = hit_y_plane(height);
+            if (!hit.has_value()) {
+                break;
+            }
+            const Hex next = world_to_hex(Vec2{hit->x, hit->z});
+            if (next == hex) {
+                break;
+            }
+            hex = next;
+        }
+    }
+    return hex;
 }
 
 } // namespace aeq

@@ -36,6 +36,7 @@ public:
 
     std::optional<int> selected_agent;
     std::optional<Hex> selected_tile;
+    std::optional<Hex> hover_tile; // under-cursor hex (updated every frame)
 
 private:
     void apply_dark_theme();

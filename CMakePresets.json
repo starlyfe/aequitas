@@ -27,7 +27,19 @@
       "generator": "Ninja",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "AEQUITAS_WARNINGS_AS_ERRORS": "OFF"
+        "AEQUITAS_WARNINGS_AS_ERRORS": "OFF",
+        "AEQUITAS_DEV": "OFF"
+      }
+    },
+    {
+      "name": "dev",
+      "displayName": "Development (RelWithDebInfo + AEQUITAS_DEV)",
+      "inherits": "base",
+      "generator": "Ninja",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "AEQUITAS_WARNINGS_AS_ERRORS": "OFF",
+        "AEQUITAS_DEV": "ON"
       }
     },
     {
@@ -52,6 +64,7 @@
   "buildPresets": [
     { "name": "debug", "configurePreset": "debug" },
     { "name": "release", "configurePreset": "release" },
+    { "name": "dev", "configurePreset": "dev" },
     { "name": "ci", "configurePreset": "ci" },
     { "name": "windows-vs-debug", "configurePreset": "windows-vs", "configuration": "Debug" },
     { "name": "windows-vs-release", "configurePreset": "windows-vs", "configuration": "Release" }
@@ -65,6 +78,11 @@
     {
       "name": "release",
       "configurePreset": "release",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "dev",
+      "configurePreset": "dev",
       "output": { "outputOnFailure": true }
     },
     {

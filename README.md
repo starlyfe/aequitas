@@ -33,8 +33,8 @@ No victory screen. No defeat screen. Just emergent prices, inequality, survival,
 | **CMake ≥ 3.28** | Presets in `CMakePresets.json` |
 | **C++20 compiler** | MSVC 2022, Clang 15+, or GCC 12+ |
 | **[LunarG Vulkan SDK](https://vulkan.lunarg.com/)** | Headers, `glslc`, loader. Set `VULKAN_SDK` to the SDK root. |
-| **Ninja** (recommended) | Faster builds; scripts fall back to Visual Studio on Windows |
-| **Python 3.10+** (optional) | For `analysis/plot_run.py` only |
+| **Ninja** (recommended) | Faster builds; tools fall back to Visual Studio on Windows |
+| **Python 3.10+** | Homebase GUI (`tkinter`) + optional `analysis/plot_run.py` |
 
 ### End-user note
 
@@ -42,58 +42,64 @@ Players downloading a release zip need the **Vulkan runtime** installed (bundled
 
 ## Quick Start
 
-Clone, then run the build script for your platform.
+### Homebase GUI (easiest)
 
-### Windows
+From the repo root, open the tools homebase:
+
+| OS | Launch |
+|----|--------|
+| Windows | Double-click [`tools/AequitasHome.bat`](tools/AequitasHome.bat) |
+| macOS | Double-click [`tools/AequitasHome.command`](tools/AequitasHome.command) |
+| Linux | `./tools/AequitasHome.sh` |
+
+Pick **Release / Development / Debug**, toggle **Package**, **Run after**, **Skip tests**, then hit **Build**. Details: [`tools/README.md`](tools/README.md).
+
+### CLI
+
+#### Windows
 
 ```powershell
 git clone https://github.com/starlyfe/aequitas.git
-cd Aequitas
-.\scripts\build-windows.ps1          # Release build + tests + package → releases/vX.Y.Z/windows/
-.\scripts\build-windows.ps1 --debug  # Debug build (no package)
-.\scripts\build-windows.ps1 --run    # Build Release, package, launch aequitas
+cd aequitas
+.\tools\build-windows.ps1              # Release + tests + package
+.\tools\build-windows.ps1 --dev --run  # Development profile, then launch
+.\tools\build-windows.ps1 --debug
 ```
 
 Requires `VULKAN_SDK` (the script also probes `C:\VulkanSDK\*`).
 
-Build tree: `build\release\bin\`  
-Versioned release: `releases\v<VERSION>\windows\` + `aequitas-v<VERSION>-windows.zip`  
-(Version comes from the root [`VERSION`](VERSION) file — see [`AGENTS.md`](AGENTS.md).)
+Build tree: `build\<profile>\bin\`  
+Versioned release: `releases\v<VERSION>\windows\`
 
-### macOS
-
-```bash
-git clone https://github.com/starlyfe/aequitas.git
-cd Aequitas
-chmod +x scripts/build-macos.sh
-./scripts/build-macos.sh             # Release
-./scripts/build-macos.sh --debug --run
-```
-
-Requires Xcode Command Line Tools and `VULKAN_SDK` (MoltenVK is included in the LunarG macOS SDK). Builds natively on **Apple Silicon and Intel**.
-
-### Linux
+#### macOS
 
 ```bash
 git clone https://github.com/starlyfe/aequitas.git
-cd Aequitas
-chmod +x scripts/build-linux.sh
-./scripts/build-linux.sh             # Release
-./scripts/build-linux.sh --run
+cd aequitas
+chmod +x tools/AequitasHome.sh tools/build-macos.sh
+./tools/build-macos.sh
+./tools/build-macos.sh --dev --run
 ```
 
-If configure fails on missing X11/Wayland headers, the script prints an `apt` one-liner.
+#### Linux
 
-Artifacts: `build/release/bin/aequitas`, `aequitas_headless`
+```bash
+git clone https://github.com/starlyfe/aequitas.git
+cd aequitas
+chmod +x tools/AequitasHome.sh tools/build-linux.sh
+./tools/build-linux.sh
+./tools/build-linux.sh --run
+```
 
 ## Controls
 
 | Input | Action |
 |-------|--------|
-| RMB drag | Orbit camera |
-| MMB drag / WASD | Pan |
+| LMB | Select tile / agent |
+| RMB drag | Pan map (hand cursor) |
+| MMB drag | Orbit camera |
 | Scroll | Zoom |
-| LMB | Select tile / agent (when UI not capturing) |
+| WASD | Move look target |
 | HUD Control | Pause, step, speed 1×/2×/4×/8×/max |
 | HUD mode | Observer or Sovereign |
 | Sovereign tools | Inject/drain cash; drought at selected tile |
@@ -112,7 +118,7 @@ Aequitas/
 ├── shaders/           # lit.vert, lit.frag
 ├── tests/             # CTest unit tests (sim only)
 ├── cmake/             # deps.cmake, shaders.cmake
-├── scripts/           # build-windows.ps1, build-macos.sh, build-linux.sh
+├── tools/             # HOMEBASE — GUI + build/package scripts (see tools/README.md)
 ├── analysis/          # plot_run.py — offline CSV charts
 ├── docs/
 │   ├── ARCHITECTURE.md

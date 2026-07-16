@@ -30,19 +30,7 @@ constexpr float kTau = 6.2831853f;
 
 } // namespace
 
-float Renderer::biome_height(Biome b) {
-    switch (b) {
-    case Biome::Plains:
-        return 0.22f;
-    case Biome::Forest:
-        return 0.30f;
-    case Biome::Mountain:
-        return 0.62f;
-    case Biome::Water:
-    default:
-        return 0.06f;
-    }
-}
+float Renderer::biome_height(Biome b) { return tile_surface_height(b); }
 
 glm::vec3 Renderer::quintile_tint(int quintile) {
     switch (std::clamp(quintile, 0, 4)) {

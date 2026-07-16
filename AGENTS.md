@@ -47,18 +47,19 @@ releases/vX.Y.Z/aequitas-vX.Y.Z-<platform>.zip
 - `--debug` builds do **not** package unless `--package` is passed.
 - `--no-package` skips packaging even on Release.
 
-After bumping, tell the user to run their platform script, e.g.:
+After bumping, tell the user to open **tools/AequitasHome** (GUI) or run:
 
 ```powershell
-.\scripts\build-windows.ps1
+.\tools\build-windows.ps1
 ```
 
 ```bash
-./scripts/build-macos.sh
+./tools/build-macos.sh
 # or
-./scripts/build-linux.sh
+./tools/build-linux.sh
 ```
 
+Prefer the homebase GUI when demonstrating build options (profile / package / run).
 ### 4. Git tag (when the user wants to publish)
 
 Only when the user asks to tag/release:

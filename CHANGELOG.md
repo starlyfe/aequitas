@@ -7,6 +7,24 @@ The live version string is the single line in [`VERSION`](VERSION). Build script
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-07-16
+
+### Added
+- Renamed `scripts/` → `tools/` homebase
+- Cross-platform Homebase GUI (`tools/homebase.py` + `AequitasHome.bat/.sh/.command`) with profile, package, run-after, skip-tests
+- CMake `dev` preset (`RelWithDebInfo` + `AEQUITAS_DEV`) for future development-only hooks
+
+### Fixed
+- RMB pan now grabs the map (content follows the hand); prior signs were still inverted horizontally
+- Hex picking raycasts tile surface heights instead of only y=0 (fixes cursor/selection offset on raised biomes)
+
+## [0.2.1] — 2026-07-16
+
+### Fixed
+- Camera look / WASD directions were inverted (forward pointed toward the eye)
+- Remapped mouse: RMB = pan (hand cursor), MMB = orbit; corrected pan/orbit drag signs
+- Hex picking uses framebuffer coords + Vulkan NDC; Inspector shows hover/select axial coords
+
 ## [0.2.0] — 2026-07-15
 
 ### Added

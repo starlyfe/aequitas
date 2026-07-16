@@ -11,6 +11,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(AEQUITAS_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" OFF)
 option(AEQUITAS_BUILD_RENDERER "Build Vulkan renderer and GUI app" ON)
+option(AEQUITAS_DEV "Development build extras (asserts, debug overlays hooks)" OFF)
 
 # Unified output dirs
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -61,6 +62,9 @@ target_include_directories(aequitas_sim PUBLIC
     ${CMAKE_SOURCE_DIR}/src
     ${AEQUITAS_VERSION_HEADER_DIR}
 )
+if(AEQUITAS_DEV)
+    target_compile_definitions(aequitas_sim PUBLIC AEQUITAS_DEV=1)
+endif()
 aequitas_set_warnings(aequitas_sim)
 
 # ---------------------------------------------------------------------------

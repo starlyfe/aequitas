@@ -276,11 +276,36 @@ void Hud::draw_control_window(Simulation& sim, bool& paused, bool& step_once, in
     }
     ImGui::EndChild();
 
+    ImGui::Separator();
+    ImGui::TextUnformatted("Controls");
+    ImGui::BulletText("LMB — select tile / agent");
+    ImGui::BulletText("RMB drag — pan (hand cursor)");
+    ImGui::BulletText("MMB drag — orbit");
+    ImGui::BulletText("Scroll — zoom");
+    ImGui::BulletText("WASD — move look target");
+
     ImGui::End();
 }
 
 void Hud::draw_inspector_window(const Simulation& sim) {
     ImGui::Begin("Inspector");
+
+    ImGui::SeparatorText("Hex coordinates");
+    if (hover_tile.has_value()) {
+        ImGui::Text("Hover:  q=%d  r=%d", hover_tile->q, hover_tile->r);
+        const Vec2 w = hex_to_world(*hover_tile);
+        ImGui::Text("         world xz=(%.2f, %.2f)", w.x, w.y);
+    } else {
+        ImGui::TextUnformatted("Hover:  (none)");
+    }
+    if (selected_tile.has_value()) {
+        ImGui::Text("Select: q=%d  r=%d", selected_tile->q, selected_tile->r);
+    } else if (selected_agent.has_value()) {
+        ImGui::Text("Select: agent #%d", *selected_agent);
+    } else {
+        ImGui::TextUnformatted("Select: (none)");
+    }
+    ImGui::Separator();
 
     if (selected_agent.has_value()) {
         const auto& agents = sim.agents();
@@ -293,7 +318,7 @@ void Hud::draw_inspector_window(const Simulation& sim) {
         }
         if (found != nullptr) {
             ImGui::Text("Agent #%d %s", found->id, found->alive ? "" : "(dead)");
-            ImGui::Text("Pos: (%d, %d)", found->pos.q, found->pos.r);
+            ImGui::Text("Pos: q=%d  r=%d", found->pos.q, found->pos.r);
             ImGui::Text("Cash: %lld", static_cast<long long>(found->cash));
             ImGui::Text("Food: %d  Wood: %d  Stone: %d", found->inventory[0], found->inventory[1],
                         found->inventory[2]);
@@ -305,15 +330,16 @@ void Hud::draw_inspector_window(const Simulation& sim) {
     } else if (selected_tile.has_value()) {
         const Tile* t = sim.world().try_get(*selected_tile);
         if (t != nullptr) {
-            ImGui::Text("Tile (%d, %d)", t->hex.q, t->hex.r);
+            ImGui::Text("Tile q=%d  r=%d", t->hex.q, t->hex.r);
             ImGui::Text("Biome: %s", biome_name(t->biome));
             ImGui::Text("Stock: %d / %d", t->stock, t->capacity);
             ImGui::Text("Resource: %s", resource_name(biome_resource(t->biome)));
         } else {
-            ImGui::TextUnformatted("(no tile here)");
+            ImGui::TextUnformatted("(no tile at selection — outside map?)");
+            ImGui::Text("Clicked q=%d  r=%d", selected_tile->q, selected_tile->r);
         }
     } else {
-        ImGui::TextUnformatted("Click a tile or agent to inspect it.");
+        ImGui::TextUnformatted("LMB: select tile/agent. RMB: pan. MMB: orbit.");
     }
 
     ImGui::End();

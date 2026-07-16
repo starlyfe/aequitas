@@ -135,10 +135,17 @@ int main() {
         camera.process_input(window, static_cast<float>(dt_clamped), hud.want_capture_mouse(),
                               hud.want_capture_keyboard());
 
+        // Live hover hex for the Inspector coordinates readout.
+        if (!hud.want_capture_mouse()) {
+            hud.hover_tile = camera.pick(window, &sim.world());
+        } else {
+            hud.hover_tile.reset();
+        }
+
         const bool mouse_down = !hud.want_capture_mouse() &&
                                  glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
         if (mouse_down && !mouse_was_down) {
-            if (const std::optional<Hex> hex = camera.pick(window)) {
+            if (const std::optional<Hex> hex = camera.pick(window, &sim.world())) {
                 std::optional<int> nearest_agent;
                 for (const Agent& a : sim.agents()) {
                     if (a.alive && a.pos == *hex) {

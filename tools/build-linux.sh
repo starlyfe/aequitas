@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
-# Configure, build, test, and package Aequitas on Linux into releases/vX.Y.Z/linux/.
+# Configure, build, test, and optionally package Aequitas on Linux.
 #
 # Usage:
-#   ./scripts/build-linux.sh                 # Release + package
-#   ./scripts/build-linux.sh --debug         # Debug (no package)
-#   ./scripts/build-linux.sh --run           # Build Release, package, launch
-#   ./scripts/build-linux.sh --no-package    # Skip releases/ output
-#   ./scripts/build-linux.sh --package       # Force package (e.g. with --debug)
+#   ./tools/build-linux.sh
+#   ./tools/build-linux.sh --dev --run
+#   ./tools/build-linux.sh --debug --package
+#   ./tools/build-linux.sh --no-package --no-test
 
 set -euo pipefail
 
@@ -14,18 +13,22 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
 DEBUG=0
+DEV=0
 RUN=0
 FORCE_PACKAGE=0
 NO_PACKAGE=0
+NO_TEST=0
 
 for arg in "$@"; do
     case "$arg" in
         --debug)      DEBUG=1 ;;
+        --dev)        DEV=1 ;;
         --run)        RUN=1 ;;
         --package)    FORCE_PACKAGE=1 ;;
         --no-package) NO_PACKAGE=1 ;;
+        --no-test)    NO_TEST=1 ;;
         -h|--help)
-            echo "Usage: $0 [--debug] [--run] [--package] [--no-package]"
+            echo "Usage: $0 [--release|--debug|--dev] [--run] [--package] [--no-package] [--no-test]"
             exit 0
             ;;
         *)
@@ -49,11 +52,7 @@ read_version() {
     printf '%s' "$v"
 }
 
-# ---------------------------------------------------------------------------
-# Prerequisites
-# ---------------------------------------------------------------------------
 step 'Checking prerequisites'
-
 for tool in cmake g++ ninja; do
     if ! command -v "$tool" &>/dev/null; then
         echo "$tool not found on PATH." >&2
@@ -62,28 +61,24 @@ for tool in cmake g++ ninja; do
     fi
 done
 
-CMAKE_VER="$(cmake --version | head -n1)"
-GXX_VER="$(g++ --version | head -n1)"
-echo "Found $CMAKE_VER"
-echo "Found $GXX_VER"
-
 PROJECT_VERSION="$(read_version)"
 echo "Project VERSION = $PROJECT_VERSION"
 
 if [[ -z "${VULKAN_SDK:-}" || ! -d "$VULKAN_SDK" ]]; then
     echo 'VULKAN_SDK is not set or does not exist.' >&2
-    echo 'Install the LunarG Vulkan SDK from https://vulkan.lunarg.com/' >&2
     exit 1
 fi
 echo "VULKAN_SDK = $VULKAN_SDK"
 
-# ---------------------------------------------------------------------------
-# Build
-# ---------------------------------------------------------------------------
-if [[ "$DEBUG" -eq 1 ]]; then
+if [[ "$DEV" -eq 1 ]]; then
+    PRESET='dev'
+    IS_RELEASE_LIKE=0
+elif [[ "$DEBUG" -eq 1 ]]; then
     PRESET='debug'
+    IS_RELEASE_LIKE=0
 else
     PRESET='release'
+    IS_RELEASE_LIKE=1
 fi
 
 BUILD_DIR="$REPO_ROOT/build/$PRESET"
@@ -91,44 +86,48 @@ BIN_DIR="$BUILD_DIR/bin"
 
 step "Configuring preset '$PRESET'"
 if ! cmake --preset "$PRESET"; then
-    echo >&2
-    echo 'CMake configure failed. GLFW may need system headers:' >&2
-    echo "  $APT_DEPS_HINT" >&2
+    echo "CMake configure failed. GLFW may need: $APT_DEPS_HINT" >&2
     exit 1
 fi
 
 step "Building preset '$PRESET'"
 cmake --build --preset "$PRESET"
 
-step "Running tests (preset '$PRESET')"
-ctest --preset "$PRESET"
+if [[ "$NO_TEST" -eq 0 ]]; then
+    step "Running tests (preset '$PRESET')"
+    ctest --preset "$PRESET"
+else
+    echo
+    echo '(Skipping tests)'
+fi
 
 HEADLESS="$BIN_DIR/aequitas_headless"
 VISUAL="$BIN_DIR/aequitas"
 
 step 'Build complete'
 echo "  version           : $PROJECT_VERSION"
+echo "  profile           : $PRESET"
 echo "  aequitas_headless : $HEADLESS"
 if [[ -f "$VISUAL" ]]; then
     echo "  aequitas          : $VISUAL"
 else
-    echo "  aequitas          : (not built — AEQUITAS_BUILD_RENDERER=OFF?)"
+    echo "  aequitas          : (not built - AEQUITAS_BUILD_RENDERER=OFF?)"
 fi
 
 SHOULD_PACKAGE=0
 if [[ "$NO_PACKAGE" -eq 0 ]]; then
-    if [[ "$DEBUG" -eq 0 || "$FORCE_PACKAGE" -eq 1 ]]; then
+    if [[ "$IS_RELEASE_LIKE" -eq 1 || "$FORCE_PACKAGE" -eq 1 ]]; then
         SHOULD_PACKAGE=1
     fi
 fi
 
 if [[ "$SHOULD_PACKAGE" -eq 1 ]]; then
     step "Packaging releases/v${PROJECT_VERSION}/linux"
-    chmod +x "$REPO_ROOT/scripts/package-release.sh"
-    AEQUITAS_VERSION="$PROJECT_VERSION" "$REPO_ROOT/scripts/package-release.sh" linux "$BIN_DIR"
+    chmod +x "$REPO_ROOT/tools/package-release.sh"
+    AEQUITAS_VERSION="$PROJECT_VERSION" "$REPO_ROOT/tools/package-release.sh" linux "$BIN_DIR"
 else
     echo
-    echo '(Skipping releases/ package — use Release build or pass --package)'
+    echo '(Skipping releases/ package - use Release, or pass --package)'
 fi
 
 if [[ "$RUN" -eq 1 ]]; then

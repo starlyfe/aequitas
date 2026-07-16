@@ -1,14 +1,11 @@
 #!/usr/bin/env bash
-# Configure, build, test, and package Aequitas on macOS into releases/vX.Y.Z/macos/.
+# Configure, build, test, and optionally package Aequitas on macOS.
 #
 # Usage:
-#   ./scripts/build-macos.sh                 # Release + package
-#   ./scripts/build-macos.sh --debug         # Debug (no package)
-#   ./scripts/build-macos.sh --run           # Build Release, package, launch
-#   ./scripts/build-macos.sh --no-package    # Skip releases/ output
-#   ./scripts/build-macos.sh --package       # Force package (e.g. with --debug)
-#
-# Supports Apple Silicon (arm64) and Intel (x86_64) natively.
+#   ./tools/build-macos.sh
+#   ./tools/build-macos.sh --dev --run
+#   ./tools/build-macos.sh --debug --package
+#   ./tools/build-macos.sh --no-package --no-test
 
 set -euo pipefail
 
@@ -16,18 +13,22 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
 DEBUG=0
+DEV=0
 RUN=0
 FORCE_PACKAGE=0
 NO_PACKAGE=0
+NO_TEST=0
 
 for arg in "$@"; do
     case "$arg" in
         --debug)      DEBUG=1 ;;
+        --dev)        DEV=1 ;;
         --run)        RUN=1 ;;
         --package)    FORCE_PACKAGE=1 ;;
         --no-package) NO_PACKAGE=1 ;;
+        --no-test)    NO_TEST=1 ;;
         -h|--help)
-            echo "Usage: $0 [--debug] [--run] [--package] [--no-package]"
+            echo "Usage: $0 [--release|--debug|--dev] [--run] [--package] [--no-package] [--no-test]"
             exit 0
             ;;
         *)
@@ -49,25 +50,15 @@ read_version() {
     printf '%s' "$v"
 }
 
-# ---------------------------------------------------------------------------
-# Prerequisites
-# ---------------------------------------------------------------------------
 step 'Checking prerequisites'
-
 if ! xcode-select -p &>/dev/null; then
-    echo 'Xcode Command Line Tools not found.' >&2
-    echo 'Install with: xcode-select --install' >&2
+    echo 'Xcode Command Line Tools not found. Install with: xcode-select --install' >&2
     exit 1
 fi
-
 if ! command -v cmake &>/dev/null; then
     echo 'CMake not found. Install via Homebrew: brew install cmake' >&2
     exit 1
 fi
-
-CMAKE_VER="$(cmake --version | head -n1)"
-echo "Found $CMAKE_VER"
-
 if ! command -v ninja &>/dev/null; then
     echo 'Ninja not found. Install via Homebrew: brew install ninja' >&2
     exit 1
@@ -81,13 +72,11 @@ resolve_vulkan_sdk() {
         echo "VULKAN_SDK = $VULKAN_SDK"
         return 0
     fi
-
     local candidates=(
         "/usr/local/share/vulkan/sdk"
         "/opt/homebrew/share/vulkan/sdk"
         "$HOME/VulkanSDK"
     )
-
     for base in "${candidates[@]}"; do
         if [[ -d "$base" ]]; then
             local latest
@@ -99,24 +88,21 @@ resolve_vulkan_sdk() {
             fi
         fi
     done
-
     echo 'VULKAN_SDK is not set and MoltenVK was not found.' >&2
-    echo 'Install the LunarG macOS Vulkan SDK from https://vulkan.lunarg.com/' >&2
     exit 1
 }
-
 resolve_vulkan_sdk
+echo "Building for $(uname -m)"
 
-ARCH="$(uname -m)"
-echo "Building for $ARCH (Apple Silicon and Intel supported)"
-
-# ---------------------------------------------------------------------------
-# Build
-# ---------------------------------------------------------------------------
-if [[ "$DEBUG" -eq 1 ]]; then
+if [[ "$DEV" -eq 1 ]]; then
+    PRESET='dev'
+    IS_RELEASE_LIKE=0
+elif [[ "$DEBUG" -eq 1 ]]; then
     PRESET='debug'
+    IS_RELEASE_LIKE=0
 else
     PRESET='release'
+    IS_RELEASE_LIKE=1
 fi
 
 BUILD_DIR="$REPO_ROOT/build/$PRESET"
@@ -128,35 +114,41 @@ cmake --preset "$PRESET"
 step "Building preset '$PRESET'"
 cmake --build --preset "$PRESET"
 
-step "Running tests (preset '$PRESET')"
-ctest --preset "$PRESET"
+if [[ "$NO_TEST" -eq 0 ]]; then
+    step "Running tests (preset '$PRESET')"
+    ctest --preset "$PRESET"
+else
+    echo
+    echo '(Skipping tests)'
+fi
 
 HEADLESS="$BIN_DIR/aequitas_headless"
 VISUAL="$BIN_DIR/aequitas"
 
 step 'Build complete'
 echo "  version           : $PROJECT_VERSION"
+echo "  profile           : $PRESET"
 echo "  aequitas_headless : $HEADLESS"
 if [[ -f "$VISUAL" ]]; then
     echo "  aequitas          : $VISUAL"
 else
-    echo "  aequitas          : (not built — AEQUITAS_BUILD_RENDERER=OFF?)"
+    echo "  aequitas          : (not built - AEQUITAS_BUILD_RENDERER=OFF?)"
 fi
 
 SHOULD_PACKAGE=0
 if [[ "$NO_PACKAGE" -eq 0 ]]; then
-    if [[ "$DEBUG" -eq 0 || "$FORCE_PACKAGE" -eq 1 ]]; then
+    if [[ "$IS_RELEASE_LIKE" -eq 1 || "$FORCE_PACKAGE" -eq 1 ]]; then
         SHOULD_PACKAGE=1
     fi
 fi
 
 if [[ "$SHOULD_PACKAGE" -eq 1 ]]; then
     step "Packaging releases/v${PROJECT_VERSION}/macos"
-    chmod +x "$REPO_ROOT/scripts/package-release.sh"
-    AEQUITAS_VERSION="$PROJECT_VERSION" "$REPO_ROOT/scripts/package-release.sh" macos "$BIN_DIR"
+    chmod +x "$REPO_ROOT/tools/package-release.sh"
+    AEQUITAS_VERSION="$PROJECT_VERSION" "$REPO_ROOT/tools/package-release.sh" macos "$BIN_DIR"
 else
     echo
-    echo '(Skipping releases/ package — use Release build or pass --package)'
+    echo '(Skipping releases/ package - use Release, or pass --package)'
 fi
 
 if [[ "$RUN" -eq 1 ]]; then

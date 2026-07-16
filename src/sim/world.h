@@ -39,6 +39,21 @@ inline const char* resource_name(Resource r) {
     }
 }
 
+// Visual prism top height (must stay in sync with Renderer terrain bake).
+inline float tile_surface_height(Biome b) {
+    switch (b) {
+    case Biome::Plains:
+        return 0.22f;
+    case Biome::Forest:
+        return 0.30f;
+    case Biome::Mountain:
+        return 0.62f;
+    case Biome::Water:
+    default:
+        return 0.06f;
+    }
+}
+
 inline const char* biome_name(Biome b) {
     switch (b) {
     case Biome::Plains:

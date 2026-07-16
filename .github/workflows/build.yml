@@ -1,0 +1,102 @@
+name: Build
+
+on:
+  push:
+    branches: [main, master]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  build:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            script: scripts/build-windows.ps1
+            shell: pwsh
+            artifact_name: aequitas-windows
+          - os: ubuntu-latest
+            script: scripts/build-linux.sh
+            shell: bash
+            artifact_name: aequitas-linux
+          - os: macos-latest
+            script: scripts/build-macos.sh
+            shell: bash
+            artifact_name: aequitas-macos
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Vulkan SDK
+        uses: humbletim/setup-vulkan-sdk@v1.2.1
+        with:
+          vulkan-query-version: latest
+          vulkan-components: Vulkan-Headers,Vulkan-Loader,Glslang,SPIRV-Tools
+          vulkan-use-cache: true
+
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential ninja-build \
+            libx11-dev libxrandr-dev libxi-dev libxxf86vm-dev \
+            libxinerama-dev libxcursor-dev xorg-dev \
+            libwayland-dev libxkbcommon-dev wayland-protocols
+
+      - name: Install macOS Ninja
+        if: runner.os == 'macOS'
+        run: brew install ninja
+
+      - name: Build and test (Release)
+        shell: ${{ matrix.shell }}
+        run: ${{ matrix.script }}
+
+      - name: Package binaries (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Compress-Archive -Path build/release/bin/* -DestinationPath dist/${{ matrix.artifact_name }}.zip -Force
+
+      - name: Package binaries (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          mkdir -p dist
+          cd build/release/bin
+          zip -r "../../../dist/${{ matrix.artifact_name }}.zip" .
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: dist/${{ matrix.artifact_name }}.zip
+          if-no-files-found: error
+
+  release:
+    name: GitHub Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all platform artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*.zip
+          generate_release_notes: true

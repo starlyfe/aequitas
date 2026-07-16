@@ -1,0 +1,39 @@
+# Build
+build/
+out/
+.cache/
+cmake-build-*/
+compile_commands.json
+
+# CMake
+CMakeUserPresets.json
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.swp
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Runtime / analysis output
+*.csv
+!analysis/**
+__pycache__/
+*.pyc
+
+# Compiled shaders (generated next to binary)
+*.spv
+
+# Packages
+vcpkg_installed/

@@ -47,7 +47,7 @@ Clone, then run the build script for your platform.
 ### Windows
 
 ```powershell
-git clone https://github.com/<org>/Aequitas.git
+git clone https://github.com/starlyfe/aequitas.git
 cd Aequitas
 .\scripts\build-windows.ps1          # Release build + tests + package → releases/vX.Y.Z/windows/
 .\scripts\build-windows.ps1 --debug  # Debug build (no package)
@@ -63,7 +63,7 @@ Versioned release: `releases\v<VERSION>\windows\` + `aequitas-v<VERSION>-windows
 ### macOS
 
 ```bash
-git clone https://github.com/<org>/Aequitas.git
+git clone https://github.com/starlyfe/aequitas.git
 cd Aequitas
 chmod +x scripts/build-macos.sh
 ./scripts/build-macos.sh             # Release
@@ -75,7 +75,7 @@ Requires Xcode Command Line Tools and `VULKAN_SDK` (MoltenVK is included in the 
 ### Linux
 
 ```bash
-git clone https://github.com/<org>/Aequitas.git
+git clone https://github.com/starlyfe/aequitas.git
 cd Aequitas
 chmod +x scripts/build-linux.sh
 ./scripts/build-linux.sh             # Release

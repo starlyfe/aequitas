@@ -132,3 +132,15 @@ Build system: CMake ? 3.28, presets in `CMakePresets.json` (`debug`, `release`, 
 
 **Input polish:** RMB pan uses true grab-the-map signs; picking iterates ray ? tile-top planes via `tile_surface_height` so hover/select matches raised hexes.
 
+---
+
+## Visual polish ? 2026-07-16
+
+**v0.3.1.** Corner ImGui layout (Control TL / Market BL / Macro TR / Inspector BR). Depth SSAO post stack (`PostFx`). Wall-clock day cycle (~180s) with softer sky, wrap lighting, and elevation-driven ambient ? decoupled from sim tick speed.
+
+
+---
+
+## Visual polish — 2026-07-16
+
+**v0.3.1.** Corner ImGui layout (Control TL / Market BL / Macro TR / Inspector BR). Depth SSAO post stack (`PostFx`). Wall-clock day cycle (~180s) with softer sky, wrap lighting, and elevation-driven ambient — decoupled from sim tick speed.

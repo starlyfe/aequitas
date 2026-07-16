@@ -83,6 +83,7 @@ if(AEQUITAS_BUILD_RENDERER)
         src/render/mesh.cpp
         src/render/meshgen.cpp
         src/render/pipeline.cpp
+        src/render/postfx.cpp
         src/render/camera.cpp
         src/render/renderer.cpp
     )
@@ -113,7 +114,14 @@ if(AEQUITAS_BUILD_RENDERER)
     add_executable(aequitas src/app/main.cpp)
     target_link_libraries(aequitas PRIVATE aequitas_ui aequitas_render aequitas_sim)
     aequitas_set_warnings(aequitas)
-    aequitas_add_shaders(aequitas shaders/lit.vert shaders/lit.frag)
+    aequitas_add_shaders(aequitas
+        shaders/lit.vert
+        shaders/lit.frag
+        shaders/fullscreen.vert
+        shaders/ssao.frag
+        shaders/ssao_blur.frag
+        shaders/ssao_composite.frag
+    )
 endif()
 
 # ---------------------------------------------------------------------------

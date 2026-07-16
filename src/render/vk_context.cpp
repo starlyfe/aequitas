@@ -226,7 +226,7 @@ void VkContext::create_depth() {
     image_ci.arrayLayers = 1;
     image_ci.samples = VK_SAMPLE_COUNT_1_BIT;
     image_ci.tiling = VK_IMAGE_TILING_OPTIMAL;
-    image_ci.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    image_ci.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
     image_ci.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     image_ci.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 

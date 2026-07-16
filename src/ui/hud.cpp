@@ -66,6 +66,11 @@ void Hud::init(VkContext& ctx, GLFWwindow* window) {
     ImPlot::CreateContext();
     apply_dark_theme();
 
+    // Soften panel chrome so the aquarium stays readable behind them.
+    ImGuiStyle& style = ImGui::GetStyle();
+    style.Colors[ImGuiCol_WindowBg].w = 0.88f;
+    style.WindowPadding = ImVec2(10.f, 10.f);
+
     ImGui_ImplGlfw_InitForVulkan(window, true);
 
     ImGui_ImplVulkan_InitInfo init_info{};
@@ -179,14 +184,23 @@ void Hud::detect_auto_events(const Simulation& sim) {
 
 void Hud::draw(Simulation& sim, bool& paused, bool& step_once, int& speed_multiplier, SimMode& mode, float fps) {
     detect_auto_events(sim);
-    draw_control_window(sim, paused, step_once, speed_multiplier, mode, fps);
-    draw_inspector_window(sim);
-    draw_market_window(sim);
-    draw_macro_window(sim);
+    // Bump this when default corner layout changes so existing imgui.ini gets overridden once.
+    constexpr int kLayoutVersion = 3;
+    static int applied_layout = 0;
+    const ImGuiCond pos_cond = (applied_layout != kLayoutVersion) ? ImGuiCond_Always : ImGuiCond_FirstUseEver;
+    applied_layout = kLayoutVersion;
+
+    draw_control_window(sim, paused, step_once, speed_multiplier, mode, fps, pos_cond);
+    draw_inspector_window(sim, pos_cond);
+    draw_market_window(sim, pos_cond);
+    draw_macro_window(sim, pos_cond);
 }
 
 void Hud::draw_control_window(Simulation& sim, bool& paused, bool& step_once, int& speed_multiplier, SimMode& mode,
-                               float fps) {
+                               float fps, int pos_cond) {
+    const ImGuiViewport* vp = ImGui::GetMainViewport();
+    ImGui::SetNextWindowPos(ImVec2(vp->WorkPos.x + 10.f, vp->WorkPos.y + 10.f), static_cast<ImGuiCond>(pos_cond));
+    ImGui::SetNextWindowSize(ImVec2(250.f, 350.f), static_cast<ImGuiCond>(pos_cond));
     ImGui::Begin("Control");
     ImGui::Text("Tick: %d", sim.tick_index());
     ImGui::Text("FPS: %.1f", static_cast<double>(fps));
@@ -287,7 +301,11 @@ void Hud::draw_control_window(Simulation& sim, bool& paused, bool& step_once, in
     ImGui::End();
 }
 
-void Hud::draw_inspector_window(const Simulation& sim) {
+void Hud::draw_inspector_window(const Simulation& sim, int pos_cond) {
+    const ImGuiViewport* vp = ImGui::GetMainViewport();
+    ImGui::SetNextWindowPos(ImVec2(vp->WorkPos.x + vp->WorkSize.x - 310.f, vp->WorkPos.y + vp->WorkSize.y - 300.f),
+                            static_cast<ImGuiCond>(pos_cond));
+    ImGui::SetNextWindowSize(ImVec2(300.f, 290.f), static_cast<ImGuiCond>(pos_cond));
     ImGui::Begin("Inspector");
 
     ImGui::SeparatorText("Hex coordinates");
@@ -345,7 +363,11 @@ void Hud::draw_inspector_window(const Simulation& sim) {
     ImGui::End();
 }
 
-void Hud::draw_market_window(const Simulation& sim) {
+void Hud::draw_market_window(const Simulation& sim, int pos_cond) {
+    const ImGuiViewport* vp = ImGui::GetMainViewport();
+    ImGui::SetNextWindowPos(ImVec2(vp->WorkPos.x + 10.f, vp->WorkPos.y + vp->WorkSize.y - 320.f),
+                            static_cast<ImGuiCond>(pos_cond));
+    ImGui::SetNextWindowSize(ImVec2(320.f, 310.f), static_cast<ImGuiCond>(pos_cond));
     ImGui::Begin("Market");
 
     if (ImGui::BeginTabBar("ResourceTabs")) {
@@ -372,7 +394,7 @@ void Hud::draw_market_window(const Simulation& sim) {
                 ImGui::TextUnformatted(" | Ask: -");
             }
 
-            if (ImPlot::BeginPlot("Price History", ImVec2(-1.f, 160.f))) {
+            if (ImPlot::BeginPlot("Price History", ImVec2(-1.f, 110.f))) {
                 std::vector<double> xs;
                 std::vector<double> ys;
                 xs.reserve(history.size());
@@ -392,7 +414,7 @@ void Hud::draw_market_window(const Simulation& sim) {
             const std::vector<DepthLevel> bids = book.bid_depth(10);
             const std::vector<DepthLevel> asks = book.ask_depth(10);
 
-            if (ImPlot::BeginPlot("Order Book Depth", ImVec2(-1.f, 160.f))) {
+            if (ImPlot::BeginPlot("Order Book Depth", ImVec2(-1.f, 110.f))) {
                 std::vector<double> bid_px;
                 std::vector<double> bid_cum;
                 std::vector<double> ask_px;
@@ -462,7 +484,11 @@ void Hud::draw_market_window(const Simulation& sim) {
     ImGui::End();
 }
 
-void Hud::draw_macro_window(const Simulation& sim) {
+void Hud::draw_macro_window(const Simulation& sim, int pos_cond) {
+    const ImGuiViewport* vp = ImGui::GetMainViewport();
+    ImGui::SetNextWindowPos(ImVec2(vp->WorkPos.x + vp->WorkSize.x - 340.f, vp->WorkPos.y + 10.f),
+                            static_cast<ImGuiCond>(pos_cond));
+    ImGui::SetNextWindowSize(ImVec2(330.f, 400.f), static_cast<ImGuiCond>(pos_cond));
     ImGui::Begin("Macro");
 
     ImGui::Text("Population: %d / %d", sim.population(), params::AGENT_COUNT);

@@ -41,10 +41,10 @@ public:
 private:
     void apply_dark_theme();
     void draw_control_window(Simulation& sim, bool& paused, bool& step_once, int& speed_multiplier, SimMode& mode,
-                              float fps);
-    void draw_inspector_window(const Simulation& sim);
-    void draw_market_window(const Simulation& sim);
-    void draw_macro_window(const Simulation& sim);
+                              float fps, int pos_cond);
+    void draw_inspector_window(const Simulation& sim, int pos_cond);
+    void draw_market_window(const Simulation& sim, int pos_cond);
+    void draw_macro_window(const Simulation& sim, int pos_cond);
     void detect_auto_events(const Simulation& sim);
 
     std::deque<std::string> event_log_;

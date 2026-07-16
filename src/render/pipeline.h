@@ -14,7 +14,8 @@ namespace aeq {
 struct LitPushConstants {
     glm::mat4 view_proj{1.f};
     glm::vec3 sun_dir{0.f, -1.f, 0.f};
-    float ambient = 0.25f;
+    float ambient = 0.35f;
+    float sun_intensity = 1.f;
 };
 
 // Single graphics pipeline for all flat-shaded, per-instance-tinted low-poly props,

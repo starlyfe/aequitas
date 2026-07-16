@@ -45,6 +45,7 @@ public:
     VkFormat depth_format() const { return depth_format_; }
     VkExtent2D extent() const { return extent_; }
     VkImageView depth_view() const { return depth_view_; }
+    VkImage depth_image() const { return depth_image_; }
     uint32_t frames_in_flight() const { return kFramesInFlight; }
     uint32_t frame_index() const { return frame_index_; }
     uint32_t swapchain_image_count() const { return static_cast<uint32_t>(swapchain_images_.size()); }

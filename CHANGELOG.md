@@ -7,6 +7,16 @@ The live version string is the single line in [`VERSION`](VERSION). Build script
 
 ## [Unreleased]
 
+## [0.3.1] — 2026-07-16
+
+### Added
+- Depth-based SSAO with separable blur + composite (soft contact shadows on the aquarium)
+
+### Changed
+- ImGui panels default to non-overlapping corners (Control TL, Market BL, Macro TR, Inspector BR)
+- Day/night is wall-clock (~3 min/cycle), independent of sim speed — smoother sky ramps
+- Softer wrap lighting, hemisphere fill, and elevation-driven ambient / sun intensity
+
 ## [0.3.0] — 2026-07-16
 
 ### Added

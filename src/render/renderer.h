@@ -3,6 +3,7 @@
 #include "render/camera.h"
 #include "render/mesh.h"
 #include "render/pipeline.h"
+#include "render/postfx.h"
 #include "render/vk_context.h"
 
 #include "sim/hex.h"
@@ -17,9 +18,7 @@
 
 namespace aeq {
 
-// Owns the lit pipeline, static prop meshes, and per-category instance buffers; rebuilds
-// instance data from a read-only SimulationView every frame and records the dynamic-rendering
-// draw pass.
+// Owns the lit pipeline, SSAO post stack, static prop meshes, and per-category instance buffers.
 class Renderer {
 public:
     void init(VkContext& ctx);
@@ -29,13 +28,14 @@ public:
 
     void draw(VkContext& ctx, const FrameContext& frame, const Camera& camera, const SimulationView& sim,
               std::optional<int> selected_agent, std::optional<Hex> selected_hex, float tick_alpha,
-              const glm::vec3& sun_dir, const glm::vec4& clear_color);
+              const glm::vec3& sun_dir, const glm::vec4& clear_color, float ambient, float sun_intensity);
 
 private:
     static float biome_height(Biome b);
     static glm::vec3 quintile_tint(int quintile);
 
     LitPipeline pipeline_;
+    PostFx postfx_;
 
     Mesh terrain_mesh_;
     Mesh tree_mesh_;

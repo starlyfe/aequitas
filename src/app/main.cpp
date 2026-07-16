@@ -33,27 +33,47 @@ void glfw_error_callback(int code, const char* description) {
     std::fprintf(stderr, "GLFW error %d: %s\n", code, description);
 }
 
-// Lerp night -> dawn -> day -> dusk -> night across one tick (one full day/night cycle),
-// matching ARCHITECTURE.md's sun_elevation = sin(2*pi*tick_fraction).
-glm::vec4 sky_color(float tick_fraction) {
-    const float elevation = std::sin(6.2831853f * tick_fraction);
-    const glm::vec3 night(0.02f, 0.03f, 0.07f);
-    const glm::vec3 dawn(0.55f, 0.42f, 0.32f);
-    const glm::vec3 day(0.53f, 0.72f, 0.86f);
+// Wall-clock day/night (independent of sim tick speed). ~3 minutes per full cycle.
+constexpr float kDayLengthSeconds = 180.f;
 
-    const float t = std::clamp((elevation + 1.f) * 0.5f, 0.f, 1.f);
-    const glm::vec3 low = glm::mix(night, dawn, std::clamp(t * 2.f, 0.f, 1.f));
-    const glm::vec3 color = glm::mix(low, day, std::clamp(t * 2.f - 1.f, 0.f, 1.f));
+float smooth01(float t) {
+    t = std::clamp(t, 0.f, 1.f);
+    return t * t * (3.f - 2.f * t);
+}
+
+// Soft multi-stop sky: night → dawn → day → dusk → night.
+glm::vec4 sky_color(float day_phase) {
+    const float elev = std::sin(6.2831853f * day_phase);
+    const glm::vec3 night(0.035f, 0.045f, 0.08f);
+    const glm::vec3 dawn(0.62f, 0.40f, 0.30f);
+    const glm::vec3 day(0.58f, 0.74f, 0.88f);
+    const glm::vec3 dusk(0.48f, 0.32f, 0.38f);
+
+    const float dayness = smooth01((elev + 0.12f) / 0.85f);
+    const float duskness = smooth01(1.f - std::abs(std::fmod(day_phase + 0.75f, 1.f) - 0.5f) * 4.f);
+    glm::vec3 color = glm::mix(night, day, dayness);
+    color = glm::mix(color, dawn, (1.f - dayness) * smooth01(elev * 2.f + 0.4f) * 0.65f);
+    color = glm::mix(color, dusk, duskness * (1.f - dayness) * 0.55f);
     return glm::vec4(color, 1.f);
 }
 
-glm::vec3 sun_direction(float tick_fraction) {
-    const float phase = tick_fraction * 6.2831853f;
-    const float elevation = std::max(std::sin(phase), 0.15f);
-    const float horiz = std::sqrt(std::max(0.f, 1.f - elevation * elevation));
-    const glm::vec3 to_sun(std::cos(phase) * horiz, elevation, std::sin(phase) * horiz);
+glm::vec3 sun_direction(float day_phase) {
+    const float phase = day_phase * 6.2831853f;
+    const float elev = std::sin(phase);
+    // Keep a soft fill light below the horizon instead of a hard clamp spike.
+    const float elev_lit = elev > 0.f ? elev : 0.08f + elev * 0.05f;
+    const float horiz = std::sqrt(std::max(0.f, 1.f - elev_lit * elev_lit));
+    const glm::vec3 to_sun(std::cos(phase) * horiz, elev_lit, std::sin(phase) * horiz);
     return -glm::normalize(to_sun);
 }
+
+void lighting_params(float day_phase, float& ambient, float& sun_intensity) {
+    const float elev = std::sin(6.2831853f * day_phase);
+    const float dayness = smooth01((elev + 0.05f) / 0.7f);
+    ambient = glm::mix(0.16f, 0.42f, dayness);
+    sun_intensity = glm::mix(0.22f, 1.0f, smooth01((elev + 0.02f) / 0.55f));
+}
+
 
 } // namespace
 
@@ -118,6 +138,7 @@ int main() {
     double fps_smoothed = 60.0;
     bool mouse_was_down = false;
     float tick_alpha = 0.f;
+    float day_phase = 0.18f; // start mid-morning
 
     auto last_time = std::chrono::steady_clock::now();
 
@@ -130,6 +151,12 @@ int main() {
         const double dt_clamped = std::clamp(dt, 0.0, 0.25);
         if (dt_clamped > 0.0) {
             fps_smoothed = fps_smoothed * 0.9 + (1.0 / dt_clamped) * 0.1;
+        }
+
+        // Daylight advances with wall clock (not sim speed), so 8x sim doesn't strobe the sky.
+        day_phase = std::fmod(day_phase + static_cast<float>(dt_clamped) / kDayLengthSeconds, 1.f);
+        if (day_phase < 0.f) {
+            day_phase += 1.f;
         }
 
         camera.process_input(window, static_cast<float>(dt_clamped), hud.want_capture_mouse(),
@@ -194,8 +221,11 @@ int main() {
             }
         }
 
-        const glm::vec4 clear_color = sky_color(tick_alpha);
-        const glm::vec3 sun_dir = sun_direction(tick_alpha);
+        const glm::vec4 clear_color = sky_color(day_phase);
+        const glm::vec3 sun_dir = sun_direction(day_phase);
+        float ambient = 0.35f;
+        float sun_intensity = 1.f;
+        lighting_params(day_phase, ambient, sun_intensity);
 
         FrameContext frame;
         if (!ctx.begin_frame(frame)) {
@@ -206,7 +236,7 @@ int main() {
         hud.draw(sim, paused, step_once, speed_multiplier, mode, static_cast<float>(fps_smoothed));
 
         renderer.draw(ctx, frame, camera, sim.view(), hud.selected_agent, hud.selected_tile, tick_alpha, sun_dir,
-                       clear_color);
+                       clear_color, ambient, sun_intensity);
 
         hud.end_frame(ctx, frame);
         ctx.end_frame(frame);

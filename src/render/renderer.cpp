@@ -49,6 +49,7 @@ glm::vec3 Renderer::quintile_tint(int quintile) {
 
 void Renderer::init(VkContext& ctx) {
     pipeline_.create(ctx);
+    postfx_.init(ctx);
 
     auto upload = [&](Mesh& mesh, const CPUMesh& cpu) { mesh.upload(ctx, cpu.verts, cpu.indices); };
     upload(tree_mesh_, generate_tree());
@@ -76,6 +77,7 @@ void Renderer::shutdown(VkContext& ctx) {
     hub_instances_.destroy(ctx);
     highlight_instances_.destroy(ctx);
 
+    postfx_.shutdown(ctx);
     pipeline_.destroy(ctx);
 }
 
@@ -108,13 +110,16 @@ void Renderer::bake_terrain(VkContext& ctx, const World& world) {
 
 void Renderer::draw(VkContext& ctx, const FrameContext& frame, const Camera& camera, const SimulationView& sim,
                      std::optional<int> selected_agent, std::optional<Hex> selected_hex, float tick_alpha,
-                     const glm::vec3& sun_dir, const glm::vec4& clear_color) {
+                     const glm::vec3& sun_dir, const glm::vec4& clear_color, float ambient, float sun_intensity) {
     const float aspect = frame.extent.height > 0
                               ? static_cast<float>(frame.extent.width) / static_cast<float>(frame.extent.height)
                               : 1.f;
 
+    postfx_.ensure_targets(ctx, frame.extent);
+    postfx_.prepare_scene_target(frame.cmd);
+
     VkRenderingAttachmentInfo color_attachment{VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO};
-    color_attachment.imageView = frame.swapchain_view;
+    color_attachment.imageView = postfx_.scene_color_view();
     color_attachment.imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
     color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -125,7 +130,7 @@ void Renderer::draw(VkContext& ctx, const FrameContext& frame, const Camera& cam
     depth_attachment.imageView = ctx.depth_view();
     depth_attachment.imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
     depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
     depth_attachment.clearValue.depthStencil = VkClearDepthStencilValue{1.f, 0};
 
     VkRenderingInfo rendering_info{VK_STRUCTURE_TYPE_RENDERING_INFO};
@@ -147,7 +152,8 @@ void Renderer::draw(VkContext& ctx, const FrameContext& frame, const Camera& cam
     LitPushConstants pc;
     pc.view_proj = camera.view_proj(aspect);
     pc.sun_dir = glm::length(sun_dir) > 1e-6f ? glm::normalize(sun_dir) : glm::vec3(0.f, -1.f, 0.f);
-    pc.ambient = 0.28f;
+    pc.ambient = ambient;
+    pc.sun_intensity = sun_intensity;
     pipeline_.push(frame.cmd, pc);
 
     auto draw_props = [&](Mesh& mesh, InstanceBuffer& instances) {
@@ -291,6 +297,11 @@ void Renderer::draw(VkContext& ctx, const FrameContext& frame, const Camera& cam
     }
 
     vkCmdEndRendering(frame.cmd);
+
+    const float aspect_for_post = frame.extent.height > 0
+                                       ? static_cast<float>(frame.extent.width) / static_cast<float>(frame.extent.height)
+                                       : 1.f;
+    postfx_.apply(ctx, frame, camera.view_proj(aspect_for_post), 0.52f);
 }
 
 } // namespace aeq
